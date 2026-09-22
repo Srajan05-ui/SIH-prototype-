@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aerofare - AirPrice India</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for the chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">Aerofare</div>
+            <ul class="nav-list">
+                <li class="nav-item active"><span class="nav-dot"></span>Command Center</li>
+                <li class="nav-item"><span class="nav-dot"></span>Provenance & Anomalies</li>
+                <li class="nav-item"><span class="nav-dot"></span>API Security</li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="page-title">Inflation Command Center</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="status-pill" id="api-status">
+                        <div class="status-dot-wrapper">
+                            <span class="status-dot"></span>
+                            <span class="status-radar"></span>
+                        </div>
+                        <span class="status-text">Simulated Data</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Hero -->
+            <section class="hero-section">
+                <div class="hero-header">
+                    <h2 class="hero-title">Headline CPI (Fisher)</h2>
+                    <span class="data-badge">Base: 2026</span>
+                </div>
+                <div class="hero-metrics">
+                    <div class="split-flap" id="main-index-value">
+                        <!-- Digits injected via JS -->
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">.</span>
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">0</span>
+                    </div>
+                    <div class="delta-chip delta-up" id="main-delta">+1.2% MoM</div>
+                </div>
+            </section>
+
+            <!-- Stat Strip -->
+            <section class="stat-strip">
+                <div class="stat-item">
+                    <div class="stat-label">Core CPI (Trimmed)</div>
+                    <div class="stat-value" id="stat-core">0.00</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-label">Törnqvist Variance</div>
+                    <div class="stat-value" id="stat-variance">0.00</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-label">National CPI Impact</div>
+                    <div class="stat-value" id="stat-impact">+0 bps</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-label">Anomalies Detected</div>
+                    <div class="stat-value" id="stat-anomalies">0</div>
+                </div>
+            </section>
+
+            <!-- Chart Panel -->
+            <section class="chart-panel">
+                <div class="chart-header">
+                    <h3 class="panel-title">Temporal Inflation Matrix</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="inflationChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Bottom Two Columns -->
+            <div class="bottom-grid">
+                <section class="anomaly-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Active Anomalies</h3>
+                    </div>
+                    <div class="anomaly-list" id="anomaly-list">
+                        <!-- Populated via JS -->
+                    </div>
+                </section>
+
+                <section class="route-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Route Comparison</h3>
+                    </div>
+                    <div class="route-chart-container">
+                        <canvas id="routeChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 1. Superlative Index Comparison -->
+            <section class="superlative-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Superlative Indices Validation</h3>
+                    <p class="panel-subtitle">Multiple econometric indices are continuously tracked to correct for substitution bias.</p>
+                </div>
+                <div class="superlative-grid">
+                    <div class="superlative-item">
+                        <div class="sup-label">Fisher Ideal (Headline)</div>
+                        <div class="sup-value" id="idx-fisher">--</div>
+                    </div>
+                    <div class="superlative-item">
+                        <div class="sup-label">Törnqvist</div>
+                        <div class="sup-value" id="idx-tornqvist">--</div>
+                    </div>
+                    <div class="superlative-item">
+                        <div class="sup-label">Walsh</div>
+                        <div class="sup-value" id="idx-walsh">--</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2 & 3. Data Trust and Regional Grid -->
+            <div class="middle-grid">
+                <section class="trust-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Data Trust & Provenance</h3>
+                    </div>
+                    <div class="trust-layout">
+                        <div class="trust-score-box">
+                            <div class="trust-score-val" id="trust-score-main">--</div>
+                            <div class="trust-score-label">System Integrity</div>
+                        </div>
+                        <div class="trust-dimensions" id="trust-dimensions-list">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <section class="regional-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Regional Sub-Indices</h3>
+                    </div>
+                    <div class="regional-chart-container">
+                        <canvas id="regionalChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 4. Policy Scenario Simulator -->
+            <section class="simulator-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Policy Scenario Simulator</h3>
+                    <p class="panel-subtitle">Real-time stress testing of exogenous shocks on transport and national inflation.</p>
+                </div>
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="slider-group">
+                            <label>Fuel Shock (%) <span id="val-fuel">0</span></label>
+                            <input type="range" id="sim-fuel" min="-50" max="100" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label>Demand Shift (%) <span id="val-demand">0</span></label>
+                            <input type="range" id="sim-demand" min="-50" max="100" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label>Capacity Constraint (%) <span id="val-cap">0</span></label>
+                            <input type="range" id="sim-cap" min="-30" max="30" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label>Seasonal Factor <span id="val-season">1.0</span></label>
+                            <input type="range" id="sim-season" min="0.5" max="2.0" step="0.1" value="1.0">
+                        </div>
+                    </div>
+                    <div class="sim-results">
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Transport CPI Impact</div>
+                            <div class="sim-result-value" id="res-transport">+0 bps</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">National Headline Impact</div>
+                            <div class="sim-result-value" id="res-national">+0 bps</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
+
