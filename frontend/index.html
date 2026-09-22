@@ -119,8 +119,96 @@
                     </div>
                 </section>
             </div>
+
+            <!-- 1. Superlative Index Comparison -->
+            <section class="superlative-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Superlative Indices Validation</h3>
+                    <p class="panel-subtitle">Multiple econometric indices are continuously tracked to correct for substitution bias.</p>
+                </div>
+                <div class="superlative-grid">
+                    <div class="superlative-item">
+                        <div class="sup-label">Fisher Ideal (Headline)</div>
+                        <div class="sup-value" id="idx-fisher">--</div>
+                    </div>
+                    <div class="superlative-item">
+                        <div class="sup-label">Törnqvist</div>
+                        <div class="sup-value" id="idx-tornqvist">--</div>
+                    </div>
+                    <div class="superlative-item">
+                        <div class="sup-label">Walsh</div>
+                        <div class="sup-value" id="idx-walsh">--</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2 & 3. Data Trust and Regional Grid -->
+            <div class="middle-grid">
+                <section class="trust-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Data Trust & Provenance</h3>
+                    </div>
+                    <div class="trust-layout">
+                        <div class="trust-score-box">
+                            <div class="trust-score-val" id="trust-score-main">--</div>
+                            <div class="trust-score-label">System Integrity</div>
+                        </div>
+                        <div class="trust-dimensions" id="trust-dimensions-list">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <section class="regional-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Regional Sub-Indices</h3>
+                    </div>
+                    <div class="regional-chart-container">
+                        <canvas id="regionalChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 4. Policy Scenario Simulator -->
+            <section class="simulator-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Policy Scenario Simulator</h3>
+                    <p class="panel-subtitle">Real-time stress testing of exogenous shocks on transport and national inflation.</p>
+                </div>
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="slider-group">
+                            <label>Fuel Shock (%) <span id="val-fuel">0</span></label>
+                            <input type="range" id="sim-fuel" min="-50" max="100" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label>Demand Shift (%) <span id="val-demand">0</span></label>
+                            <input type="range" id="sim-demand" min="-50" max="100" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label>Capacity Constraint (%) <span id="val-cap">0</span></label>
+                            <input type="range" id="sim-cap" min="-30" max="30" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label>Seasonal Factor <span id="val-season">1.0</span></label>
+                            <input type="range" id="sim-season" min="0.5" max="2.0" step="0.1" value="1.0">
+                        </div>
+                    </div>
+                    <div class="sim-results">
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Transport CPI Impact</div>
+                            <div class="sim-result-value" id="res-transport">+0 bps</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">National Headline Impact</div>
+                            <div class="sim-result-value" id="res-national">+0 bps</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
     <script src="app.js"></script>
 </body>
 </html>
+
