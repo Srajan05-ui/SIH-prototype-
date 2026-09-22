@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
+import requests
 
 # ==========================================
 # PAGE CONFIGURATION (High-Density Dark Theme)
@@ -32,9 +33,18 @@ st.markdown("""
         font-weight: 700;
         color: #38BDF8;
     }
+    @keyframes flash {
+        0% { background-color: #F87171; color: #0B0E14; }
+        50% { background-color: transparent; color: #F87171; }
+        100% { background-color: #F87171; color: #0B0E14; }
+    }
     .variance-alert {
         color: #F87171 !important;
         font-weight: bold;
+        padding: 10px;
+        border-radius: 5px;
+        animation: flash 1s infinite;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -57,31 +67,42 @@ page = st.sidebar.radio("Navigation", [
 ])
 
 # ==========================================
-# MOCK API FETCH (To be replaced by Backend Dev)
+# API FETCH (To FastAPI Backend)
 # ==========================================
 def fetch_inflation_vectors(base_year):
-    # This simulates fetching JSON from the FastAPI backend (index_chain_calc.py)
-    # The Frontend Dev should replace this with `requests.get()`
+    api_url = "http://localhost:8000/api/v1/inflation_vectors"
     
-    dates = pd.date_range(start="2026-01-01", periods=12, freq='MS')
-    
-    # Simulate the curves
-    fisher_headline = np.linspace(100, 112, 12) + np.random.normal(0, 1.5, 12)
-    trimmed_core = np.linspace(100, 108, 12) + np.random.normal(0, 0.5, 12) # Smoother
-    tornqvist_val = fisher_headline + np.random.normal(0, 0.02, 12) # Very close to Fisher
-    
-    # Rebase simulation logic
-    multiplier = 1.0
-    if base_year == 2012: multiplier = 1.8
-    elif base_year == 2022: multiplier = 1.2
+    try:
+        response = requests.get(api_url, params={"base_year": base_year}, timeout=2)
+        response.raise_for_status()
+        data = response.json()
+        df = pd.DataFrame(data)
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    except requests.exceptions.RequestException as e:
+        # Graceful fallback to mock data if backend is unreachable
+        st.sidebar.warning("⚠️ Backend API Unreachable. Using Simulation Mode.")
+        dates = pd.date_range(start="2026-01-01", periods=12, freq='MS')
         
-    return pd.DataFrame({
-        'Date': dates,
-        'Headline (Fisher)': fisher_headline * multiplier,
-        'Core (Trimmed Mean)': trimmed_core * multiplier,
-        'Törnqvist Validation': tornqvist_val * multiplier,
-        'Historical Base': np.full(12, 100.0 * multiplier)
-    })
+        # Simulate the curves
+        fisher_headline = np.linspace(100, 112, 12) + np.random.normal(0, 1.5, 12)
+        trimmed_core = np.linspace(100, 108, 12) + np.random.normal(0, 0.5, 12) 
+        # Adding a bit of drift if base_year is 2012 to show off the visual alert functionality
+        drift = 0.1 if base_year == 2012 else 0.02
+        tornqvist_val = fisher_headline + np.random.normal(0, drift, 12)
+        
+        # Rebase simulation logic
+        multiplier = 1.0
+        if base_year == 2012: multiplier = 1.8
+        elif base_year == 2022: multiplier = 1.2
+            
+        return pd.DataFrame({
+            'Date': dates,
+            'Headline (Fisher)': fisher_headline * multiplier,
+            'Core (Trimmed Mean)': trimmed_core * multiplier,
+            'Törnqvist Validation': tornqvist_val * multiplier,
+            'Historical Base': np.full(12, 100.0 * multiplier)
+        })
 
 # ==========================================
 # MAIN DASHBOARD TAB: Command Center
