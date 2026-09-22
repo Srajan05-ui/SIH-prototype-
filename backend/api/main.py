@@ -10,6 +10,7 @@ from functools import lru_cache
 from backend.db.database import get_db, engine, Base
 from backend.engine.index_chain_calc import SovereignEconometricEngine
 from backend.scraper.scraper import scrape_all_sovereign_routes
+from backend.scraper.mmt_scraper import scrape_mmt_sync, calculate_apix_weighted_fare
 
 Base.metadata.create_all(bind=engine)
 
@@ -56,25 +57,51 @@ CACHE_TTL_SECONDS = 1800  # 30 minutes
 
 def _get_live_route_dataframe() -> pd.DataFrame:
     """
-    Fetches LIVE prices from Google Flights via fast-flights scraper.
-    Caches the result for 30 minutes to avoid IP throttling.
-    Falls back to deterministic synthetic data if scraper fails.
+    Tiered data source strategy:
+      1. MMT Playwright (primary OTA — real fare cards from MakeMyTrip)
+      2. Google Flights fast-flights (secondary)
+      3. Deterministic synthetic fallback
+    Results are cached for 30 minutes.
     """
     global _scrape_cache
     now = time.time()
 
-    # Return cached data if still fresh
     if _scrape_cache["data"] is not None and (now - _scrape_cache["timestamp"]) < CACHE_TTL_SECONDS:
         return _scrape_cache["data"]
 
-    # Attempt live scrape
+    # ── Tier 1: MakeMyTrip Playwright scraper ──
+    try:
+        mmt_df = scrape_mmt_sync(
+            routes=[("BOM", "DEL"), ("DEL", "BOM"), ("BLR", "BOM"),
+                    ("DEL", "BLR"), ("DEL", "CCU"), ("HYD", "DEL")],
+            windows=[7, 30],
+        )
+        if not mmt_df.empty and len(mmt_df) >= 4:
+            # Build t0/t1 pairs: T+30 = base price, T+7 = current price
+            t30 = mmt_df[mmt_df["advance_window"] == "T+30"].groupby("route")["jevons_fare_inr"].mean()
+            t7  = mmt_df[mmt_df["advance_window"] == "T+7"].groupby("route")["jevons_fare_inr"].mean()
+            common_routes = t30.index.intersection(t7.index)
+            if len(common_routes) >= 3:
+                df = pd.DataFrame({
+                    "route": common_routes,
+                    "base_price_t0": t30[common_routes].values,
+                    "base_price_t1": t7[common_routes].values,
+                    "passenger_volume_t0": 900.0,
+                    "passenger_volume_t1": 950.0,
+                    "source": "MMT_Playwright_Live",
+                })
+                _scrape_cache = {"data": df, "timestamp": now,
+                                 "raw_mmt": mmt_df, "apix": calculate_apix_weighted_fare(mmt_df)}
+                return df
+    except Exception as e:
+        pass
+
+    # ── Tier 2: Google Flights fast-flights ──
     try:
         records = scrape_all_sovereign_routes(days_ahead=30)
-        if records and len(records) >= 3:  # Need at least 3 routes for meaningful indices
-            # Build t0 (30-day prices) and t1 (7-day prices for comparison)
+        if records and len(records) >= 3:
             records_7d = scrape_all_sovereign_routes(days_ahead=7)
             records_7d_map = {r["route"]: r for r in records_7d} if records_7d else {}
-
             rows = []
             for r in records:
                 route = r["route"]
@@ -83,17 +110,17 @@ def _get_live_route_dataframe() -> pd.DataFrame:
                     "route": route,
                     "base_price_t0": r["base_fare"],
                     "base_price_t1": r7["base_fare"] if r7 else r["base_fare"] * 1.05,
-                    "passenger_volume_t0": 900.0,   # Static DGCA monthly pax proxy
+                    "passenger_volume_t0": 900.0,
                     "passenger_volume_t1": 950.0,
                     "source": "GoogleFlights_Live",
                 })
             df = pd.DataFrame(rows)
-            _scrape_cache = {"data": df, "timestamp": now}
+            _scrape_cache = {"data": df, "timestamp": now, "apix": None}
             return df
-    except Exception as e:
-        pass  # Fall through to synthetic fallback
+    except Exception:
+        pass
 
-    # Synthetic fallback (deterministic — same values every restart)
+    # ── Tier 3: Deterministic synthetic fallback ──
     rng = np.random.default_rng(42)
     routes = ["BOM-DEL", "DEL-BOM", "BLR-BOM", "BOM-BLR", "DEL-BLR", "DEL-CCU"]
     df = pd.DataFrame({
@@ -104,7 +131,7 @@ def _get_live_route_dataframe() -> pd.DataFrame:
         "passenger_volume_t1": rng.integers(280, 1250, len(routes)).astype(float),
         "source": "Synthetic_Fallback",
     })
-    _scrape_cache = {"data": df, "timestamp": now}
+    _scrape_cache = {"data": df, "timestamp": now, "apix": None}
     return df
 
 # ── ENDPOINT: National Inflation Metrics ─────────────────────────────
@@ -115,12 +142,13 @@ def get_national_inflation(
     api_key: str = Depends(get_api_key),
 ):
     rate_limiter(request)
-    route_data = _get_live_route_dataframe()  # ← LIVE Google Flights data (30-min cache)
+    route_data = _get_live_route_dataframe()
     data_source = route_data["source"].iloc[0] if "source" in route_data.columns else "Unknown"
     engine_obj = SovereignEconometricEngine(base_year=base_year)
     result = engine_obj.build_inflation_vectors(route_data, base_year=base_year)
-    result["data_source"] = data_source  # Tell the dashboard if data is live or synthetic
+    result["data_source"] = data_source
     result["routes_scraped"] = route_data["route"].tolist()
+    result["apix_weighted_fare_inr"] = _scrape_cache.get("apix", None)
     return result
 
 # ── ENDPOINT: Anomaly Detection Feed ─────────────────────────────

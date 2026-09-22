@@ -10,3 +10,5 @@ fast-flights
 curl_cffi
 streamlit
 plotly
+playwright
+
