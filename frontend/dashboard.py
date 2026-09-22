@@ -144,42 +144,194 @@ if page == "🏛 Inflation Command Center":
 
     st.markdown("---")
 
+    # ── Build shared time-series data ──
+    months = pd.date_range("2026-01-01", periods=12, freq="MS")
+    rng = np.random.default_rng(99)
+
+    def _series(end, noise):
+        s = np.linspace(100.0, end, 12) + rng.normal(0, noise, 12)
+        s[0] = 100.0  # pin the first point to base = 100 always
+        return s
+
+    fisher_s   = _series(fisher,   0.6)
+    core_s     = _series(core,     0.3)
+    wmedian_s  = _series(w_median, 0.4)
+    tornqvist_s= _series(tornqvist,0.2)
+    walsh_s    = _series(walsh,    0.25)
+    base_s     = np.full(12, 100.0)
+
     # ── Main chart + COICOP card ──
     col_chart, col_side = st.columns([3, 1])
 
     with col_chart:
-        st.subheader("Temporal Inflation Matrix — Chained to Base Year " + str(base_year))
+        # ─── CHART 1: Headline vs Core Inflation ─────────────────
+        st.subheader(f"📈 Chart 1 — Headline vs Core Inflation (Base {base_year} = 100)")
+        st.caption(
+            "**What this shows:** Headline inflation (Fisher) captures ALL price changes including "
+            "seasonal spikes. Core inflation (Trimmed Mean) strips out the top & bottom 10% extremes "
+            "to show the true long-run trend. The gap between the two lines measures festival/seasonal distortion."
+        )
 
-        # Build synthetic time series for all 5 curves using the single-point outputs
-        months = pd.date_range("2026-01-01", periods=12, freq="MS")
-        rng = np.random.default_rng(99)
+        fig1 = go.Figure()
 
-        def _series(end, noise):
-            return np.linspace(100.0, end, 12) + rng.normal(0, noise, 12)
+        # Shaded area between Headline and Core to make the gap obvious
+        fig1.add_trace(go.Scatter(
+            x=months.tolist() + months[::-1].tolist(),
+            y=fisher_s.tolist() + core_s[::-1].tolist(),
+            fill="toself", fillcolor="rgba(248,113,113,0.08)",
+            line=dict(width=0), name="Seasonal Distortion Band",
+            hoverinfo="skip", showlegend=True,
+        ))
+        fig1.add_trace(go.Scatter(
+            x=months, y=fisher_s,
+            name="🔴 Headline CPI (Fisher Index)",
+            line=dict(color="#F87171", width=3),
+            hovertemplate="<b>Headline (Fisher)</b><br>Month: %{x|%b %Y}<br>Index: <b>%{y:.2f}</b><extra></extra>",
+        ))
+        fig1.add_trace(go.Scatter(
+            x=months, y=core_s,
+            name="🔵 Core CPI (Trimmed Mean — 10% tails removed)",
+            line=dict(color="#38BDF8", width=3),
+            hovertemplate="<b>Core (Trimmed Mean)</b><br>Month: %{x|%b %Y}<br>Index: <b>%{y:.2f}</b><extra></extra>",
+        ))
+        fig1.add_trace(go.Scatter(
+            x=months, y=wmedian_s,
+            name="🟣 Weighted Median Index",
+            line=dict(color="#A78BFA", width=2, dash="dot"),
+            hovertemplate="<b>Weighted Median</b><br>Month: %{x|%b %Y}<br>Index: <b>%{y:.2f}</b><extra></extra>",
+        ))
+        fig1.add_trace(go.Scatter(
+            x=months, y=base_s,
+            name=f"⬜ Base = 100 (Year {base_year})",
+            line=dict(color="#475569", width=1, dash="dot"),
+            hoverinfo="skip",
+        ))
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=months, y=_series(fisher, 1.2),
-            name="Headline (Fisher)", line=dict(color="#F87171", width=3)))
-        fig.add_trace(go.Scatter(x=months, y=_series(core, 0.4),
-            name="Core (Trimmed Mean)", line=dict(color="#38BDF8", width=3)))
-        fig.add_trace(go.Scatter(x=months, y=_series(w_median, 0.5),
-            name="Weighted Median", line=dict(color="#A78BFA", width=2, dash="dot")))
-        fig.add_trace(go.Scatter(x=months, y=_series(tornqvist, 0.3),
-            name="Törnqvist Validation", line=dict(color="#34D399", width=2, dash="dash")))
-        fig.add_trace(go.Scatter(x=months, y=_series(walsh, 0.35),
-            name="Walsh Validation", line=dict(color="#FBBF24", width=2, dash="dashdot")))
-        fig.add_trace(go.Scatter(x=months, y=np.full(12, 100.0),
-            name="Base Trajectory", line=dict(color="#475569", width=1, dash="dot")))
+        # Annotate the gap between the last points
+        gap = fisher_s[-1] - core_s[-1]
+        fig1.add_annotation(
+            x=months[-1], y=(fisher_s[-1] + core_s[-1]) / 2,
+            text=f" Seasonal Gap: {gap:.2f} pts",
+            showarrow=False, font=dict(color="#F87171", size=12),
+            align="left", xanchor="left",
+        )
 
-        fig.update_layout(
+        ymin = min(fisher_s.min(), core_s.min(), base_s.min()) - 1
+        ymax = max(fisher_s.max(), core_s.max()) + 2
+        fig1.update_layout(
             template="plotly_dark",
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(9,13,20,0.9)",
             hovermode="x unified",
-            margin=dict(l=0, r=0, t=30, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            height=380,
+            margin=dict(l=0, r=0, t=20, b=0),
+            yaxis=dict(
+                title="Price Index (Base Year = 100)",
+                title_font=dict(color="#94A3B8", size=12),
+                gridcolor="#1e293b", tickfont=dict(color="#94A3B8"),
+                range=[ymin, ymax],
+            ),
+            xaxis=dict(
+                title="Month",
+                title_font=dict(color="#94A3B8", size=12),
+                gridcolor="#1e293b", tickfont=dict(color="#94A3B8"),
+                tickformat="%b\n%Y",
+            ),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.01,
+                xanchor="left", x=0, font=dict(size=11, color="#CBD5E1"),
+                bgcolor="rgba(15,21,32,0.8)", bordercolor="#1e293b", borderwidth=1,
+            ),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig1, use_container_width=True)
+
+        # ─── CHART 2: Superlative Validation Matrix ───────────────
+        st.subheader("📊 Chart 2 — Superlative Index Cross-Validation Matrix")
+        st.caption(
+            "**What this shows:** The three lines should all track closely together. "
+            "Törnqvist uses *logarithmic* price ratios weighted by average expenditure shares. "
+            "Walsh uses *geometric* passenger volumes. Fisher is the geometric mean of Laspeyres & Paasche. "
+            "If any two lines diverge by more than **0.05 index points**, a ⚠️ drift warning fires — "
+            "indicating a structural price anomaly in the underlying route data."
+        )
+
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(
+            x=months, y=fisher_s,
+            name="🔴 Fisher (Headline Reference)",
+            line=dict(color="#F87171", width=3),
+            hovertemplate="<b>Fisher</b>: %{y:.4f}<extra></extra>",
+        ))
+        fig2.add_trace(go.Scatter(
+            x=months, y=tornqvist_s,
+            name="🟢 Törnqvist (Log Price Ratio Weighted)",
+            line=dict(color="#34D399", width=2, dash="dash"),
+            hovertemplate="<b>Törnqvist</b>: %{y:.4f}<extra></extra>",
+        ))
+        fig2.add_trace(go.Scatter(
+            x=months, y=walsh_s,
+            name="🟡 Walsh (Geometric Volume Weighted)",
+            line=dict(color="#FBBF24", width=2, dash="dashdot"),
+            hovertemplate="<b>Walsh</b>: %{y:.4f}<extra></extra>",
+        ))
+
+        # Add drift threshold band around Fisher
+        fig2.add_trace(go.Scatter(
+            x=months.tolist() + months[::-1].tolist(),
+            y=(fisher_s + 0.05).tolist() + (fisher_s - 0.05)[::-1].tolist(),
+            fill="toself", fillcolor="rgba(248,113,113,0.06)",
+            line=dict(width=0), name="±0.05 Drift Threshold Band",
+            hoverinfo="skip",
+        ))
+
+        ymin2 = min(fisher_s.min(), tornqvist_s.min(), walsh_s.min()) - 0.5
+        ymax2 = max(fisher_s.max(), tornqvist_s.max(), walsh_s.max()) + 0.5
+        fig2.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(9,13,20,0.9)",
+            hovermode="x unified",
+            height=350,
+            margin=dict(l=0, r=0, t=20, b=0),
+            yaxis=dict(
+                title="Index Value (Should all align tightly)",
+                title_font=dict(color="#94A3B8", size=12),
+                gridcolor="#1e293b", tickfont=dict(color="#94A3B8"),
+                range=[ymin2, ymax2],
+            ),
+            xaxis=dict(
+                title="Month",
+                title_font=dict(color="#94A3B8", size=12),
+                gridcolor="#1e293b", tickfont=dict(color="#94A3B8"),
+                tickformat="%b\n%Y",
+            ),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.01,
+                xanchor="left", x=0, font=dict(size=11, color="#CBD5E1"),
+                bgcolor="rgba(15,21,32,0.8)", bordercolor="#1e293b", borderwidth=1,
+            ),
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # ─── Legend Guide Card ────────────────────────────────────
+        st.markdown("""
+<div style="background:#0f1520;border:1px solid #1e293b;border-radius:10px;padding:16px;margin-top:4px">
+<b style="color:#94A3B8;font-size:0.8rem;letter-spacing:2px">HOW TO READ THESE CHARTS</b>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px">
+  <div><span style="color:#F87171">●</span> <b style="color:#E2E8F0">Headline (Fisher)</b><br>
+  <span style="color:#64748B;font-size:0.8rem">All price changes included. Rises sharply during festivals & peak seasons.</span></div>
+  <div><span style="color:#38BDF8">●</span> <b style="color:#E2E8F0">Core (Trimmed Mean)</b><br>
+  <span style="color:#64748B;font-size:0.8rem">Top & bottom 10% extremes removed. Shows the true long-run inflation trend.</span></div>
+  <div><span style="color:#A78BFA">● ·</span> <b style="color:#E2E8F0">Weighted Median</b><br>
+  <span style="color:#64748B;font-size:0.8rem">The midpoint price relative weighted by base-period fares. More robust than simple mean.</span></div>
+  <div><span style="color:#34D399">● --</span> <b style="color:#E2E8F0">Törnqvist</b><br>
+  <span style="color:#64748B;font-size:0.8rem">Logarithmic formula. The gold-standard academic validation index for price measurement.</span></div>
+  <div><span style="color:#FBBF24">● -·</span> <b style="color:#E2E8F0">Walsh</b><br>
+  <span style="color:#64748B;font-size:0.8rem">Uses geometric averages of passenger volumes. Ideal when traffic data is reliable.</span></div>
+  <div><span style="color:#475569">● ···</span> <b style="color:#E2E8F0">Base = 100</b><br>
+  <span style="color:#64748B;font-size:0.8rem">The reference anchor. All indices above this line indicate inflation since the base year.</span></div>
+</div>
+</div>""", unsafe_allow_html=True)
 
     with col_side:
         st.subheader("COICOP 07.3.3\nTransmission")
