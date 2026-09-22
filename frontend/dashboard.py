@@ -115,6 +115,14 @@ if page == "🏛 Inflation Command Center":
 
     st.success("🟢 Live API" if is_live else "🟡 Local engine (API offline)")
 
+    # Show data source transparency
+    data_source = data.get("data_source", "Unknown")
+    routes_scraped = data.get("routes_scraped", [])
+    if "GoogleFlights_Live" in data_source:
+        st.info(f"📡 **Data Source: Live Google Flights** — Scraped {len(routes_scraped)} routes: {', '.join(routes_scraped)}")
+    else:
+        st.warning("⚠️ **Data Source: Synthetic Fallback** — Google Flights scraper unavailable. Start the backend with `fast-flights` installed to get live data.")
+
     fisher   = data.get("fisher_headline", 105.0)
     tornqvist = data.get("tornqvist_index", 105.0)
     walsh    = data.get("walsh_index", 105.0)

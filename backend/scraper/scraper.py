@@ -1,94 +1,146 @@
+"""
+Google Flights Scraper — Sovereign Ingestion Engine
+Uses fast-flights (reverse-engineered Google Flights internal API)
+with curl_cffi TLS impersonation and Polite Backoff.
+"""
+
 import time
 import random
 import logging
-from fast_flights import FlightData, Result
-from curl_cffi import requests
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-class SovereignScrapingEngine:
-    """
-    Advanced scraping engine utilizing curl_cffi for TLS fingerprint impersonation
-    to bypass strict anti-bot systems, specifically targeting Google Flights and Airlines.
-    """
-    
-    def __init__(self, max_requests_per_minute: int = 15):
-        self.max_requests = max_requests_per_minute
-        self.request_timestamps = []
-        
-        # Base curl_cffi session masquerading as Chrome 110 to bypass TLS checks
-        self.session = requests.Session(impersonate="chrome110")
+# ── Top Indian domestic routes for MoSPI/DGCA index coverage ──
+SOVEREIGN_ROUTES = [
+    ("BOM", "DEL"),  # Mumbai → Delhi
+    ("DEL", "BOM"),  # Delhi → Mumbai
+    ("BLR", "BOM"),  # Bengaluru → Mumbai
+    ("BOM", "BLR"),  # Mumbai → Bengaluru
+    ("DEL", "BLR"),  # Delhi → Bengaluru
+    ("DEL", "CCU"),  # Delhi → Kolkata
+    ("HYD", "DEL"),  # Hyderabad → Delhi
+    ("MAA", "BOM"),  # Chennai → Mumbai
+]
 
-    def _enforce_rate_limit(self):
-        """
-        Token Bucket Rate Limiting & Polite Backoff Algorithm.
-        Ensures we never exceed the max requests per minute to avoid IP blacklisting.
-        """
+
+class RateLimiter:
+    """Token Bucket with Human Jitter — prevents IP bans."""
+    def __init__(self, max_per_minute: int = 12):
+        self.max_per_minute = max_per_minute
+        self._timestamps: List[float] = []
+
+    def wait(self):
         now = time.time()
-        # Remove timestamps older than 60 seconds
-        self.request_timestamps = [t for t in self.request_timestamps if now - t < 60]
-        
-        if len(self.request_timestamps) >= self.max_requests:
-            sleep_time = 60 - (now - self.request_timestamps[0])
-            if sleep_time > 0:
-                logger.warning(f"Rate limit approaching. Engaging polite backoff for {sleep_time:.2f}s...")
-                time.sleep(sleep_time)
-                
-        # Add Jitter to simulate human variance (between 0.5 and 2.5 seconds)
-        jitter = random.uniform(0.5, 2.5)
-        time.sleep(jitter)
-        self.request_timestamps.append(time.time())
+        self._timestamps = [t for t in self._timestamps if now - t < 60]
+        if len(self._timestamps) >= self.max_per_minute:
+            sleep_for = 60 - (now - self._timestamps[0]) + 1
+            logger.warning(f"Rate limit reached — polite backoff {sleep_for:.1f}s")
+            time.sleep(sleep_for)
+        # Human jitter: 1.5 – 3.5 seconds between requests
+        time.sleep(random.uniform(1.5, 3.5))
+        self._timestamps.append(time.time())
 
-    def fetch_google_flights_data(self, origin: str, destination: str, date: str) -> Optional[List[Dict]]:
-        """
-        Fetches pricing data from Google Flights.
-        Returns a list of parsed pricing records containing Base Fare, Taxes, etc.
-        """
-        self._enforce_rate_limit()
-        
-        try:
-            # Note: fast_flights is a wrapper, in a true production system, 
-            # we inject the curl_cffi session into the wrapper to maintain the TLS disguise.
-            result = FlightData(date=date, from_airport=origin, to_airport=destination).get_flights()
-            
-            parsed_fares = []
-            for flight in result.flights:
-                # Standardizing Fare Extraction (Assuming standard 12% tax breakdown for simulation)
-                total = flight.price
-                base = total * 0.88
-                taxes = total * 0.12
-                
-                parsed_fares.append({
-                    "source": "GoogleFlights",
-                    "route": f"{origin}-{destination}",
-                    "base_fare": base,
-                    "taxes": taxes,
-                    "baggage_fee": 0.0, # Assumes standard cabin class
-                    "total_price": total,
-                    "collection_method": "curl_cffi_fast_flights"
-                })
-            return parsed_fares
-            
-        except Exception as e:
-            logger.error(f"Google Flights Escalation Failed for {origin}-{destination}: {e}")
-            return None # Triggers Source Fallback in the main orchestrator
 
-    def fetch_airline_direct_fallback(self, url: str) -> Optional[Dict]:
-        """
-        Source Fallback mechanism. If Google Flights blocks us, we hit the airline directly 
-        using extreme TLS impersonation.
-        """
-        self._enforce_rate_limit()
-        
-        try:
-            response = self.session.get(url, timeout=10)
-            if response.status_code == 200:
-                # Custom HTML parsing would go here depending on the airline
-                return {"status": "success", "raw_html": response.text[:500]} 
-            else:
-                logger.error(f"Direct Airline Scrape returned {response.status_code}")
-                return None
-        except requests.RequestsError as e:
-            logger.error(f"Network error during direct fallback: {e}")
+def _target_date(days_ahead: int = 30) -> str:
+    """Returns a future date string in YYYY-MM-DD format."""
+    return (datetime.today() + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+
+
+def scrape_google_flights_route(
+    origin: str,
+    destination: str,
+    date: str,
+    rate_limiter: RateLimiter,
+) -> Optional[Dict]:
+    """
+    Fetches live economy-class prices from Google Flights for one route.
+    Returns a standardized fare record or None on failure.
+    """
+    try:
+        from fast_flights import FlightQuery, Passengers, create_query, get_flights
+
+        rate_limiter.wait()
+
+        query = create_query(
+            flights=[
+                FlightQuery(
+                    date=date,
+                    from_airport=origin,
+                    to_airport=destination,
+                )
+            ],
+            seat="economy",
+            trip="one-way",
+            passengers=Passengers(adults=1),
+            currency="INR",
+        )
+
+        result = get_flights(query)
+
+        if not result or not result.flights:
+            logger.warning(f"No flights returned for {origin}-{destination} on {date}")
             return None
+
+        # Pick the median-priced flight (avoid anomaly from cheapest/most expensive)
+        prices = sorted([f.price for f in result.flights if f.price and f.price > 0])
+        if not prices:
+            return None
+
+        median_price = prices[len(prices) // 2]
+
+        # Standardize: Indian airfare tax is ~18% GST on base fare
+        total = float(median_price)
+        base_fare = round(total / 1.18, 2)
+        taxes = round(total - base_fare, 2)
+
+        return {
+            "source": "GoogleFlights",
+            "route": f"{origin}-{destination}",
+            "date": date,
+            "base_fare": base_fare,
+            "taxes": taxes,
+            "baggage_fee": 0.0,
+            "total_price": total,
+            "num_options": len(prices),
+            "min_price": float(prices[0]),
+            "max_price": float(prices[-1]),
+            "collection_method": "fast_flights_v2",
+        }
+
+    except ImportError:
+        logger.error("fast-flights not installed. Run: pip install fast-flights")
+        return None
+    except Exception as e:
+        logger.error(f"Scrape failed for {origin}-{destination}: {e}")
+        return None
+
+
+def scrape_all_sovereign_routes(
+    days_ahead: int = 30,
+    routes: List = None,
+) -> List[Dict]:
+    """
+    Master ingestion function — scrapes all sovereign routes and returns
+    a clean list of standardized fare records ready for the math engine.
+    """
+    if routes is None:
+        routes = SOVEREIGN_ROUTES
+
+    limiter = RateLimiter(max_per_minute=12)
+    date = _target_date(days_ahead)
+    results = []
+
+    logger.info(f"Starting sovereign ingestion for {len(routes)} routes on {date}")
+
+    for origin, destination in routes:
+        record = scrape_google_flights_route(origin, destination, date, limiter)
+        if record:
+            results.append(record)
+            logger.info(f"✓ {origin}-{destination}: INR {record['total_price']:.0f}")
+        else:
+            logger.warning(f"✗ {origin}-{destination}: No data — skipping")
+
+    logger.info(f"Ingestion complete. {len(results)}/{len(routes)} routes collected.")
+    return results
