@@ -129,6 +129,7 @@ if page == "Inflation Command Center":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Headline (Fisher)'], name="Headline", line=dict(color='#0D6EFD', width=3)))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Core (Trimmed Mean)'], name="Core", line=dict(color='#6F42C1', width=3)))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Törnqvist Validation'], name="Törnqvist", line=dict(color='#20C997', width=2, dash='dash')))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Historical Base'], name="Base Trajectory", line=dict(color='#FD7E14', width=2, dash='dot')))
         fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -140,6 +141,29 @@ if page == "Inflation Command Center":
             gauge = {'axis': {'range': [-50, 50]}, 'bar': {'color': "#FFB703"}}
         ))
         st.plotly_chart(fig_gauge, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("Airfare Regional Hubs (Real-Time Pricing)")
+    hub_data = pd.DataFrame({
+        'City': ['Delhi', 'Mumbai', 'Bengaluru', 'Chennai', 'Kolkata', 'Hyderabad'],
+        'Lat': [28.5562, 19.0896, 13.1986, 12.9716, 22.6520, 17.2403],
+        'Lon': [77.1000, 72.8656, 77.7066, 80.1636, 88.4467, 78.4294],
+        'Avg_Price': [6500, 7200, 5800, 4900, 5100, 4800],
+        'Color': ['#DC3545', '#FD7E14', '#FFB703', '#20C997', '#0D6EFD', '#6F42C1']
+    })
+    
+    fig_map = px.scatter_mapbox(
+        hub_data, lat="Lat", lon="Lon", hover_name="City", hover_data={"Color": False, "Lat": False, "Lon": False, "Avg_Price": True},
+        color="City", size="Avg_Price",
+        color_discrete_sequence=hub_data['Color'].tolist(),
+        zoom=3.5, center={"lat": 22.0, "lon": 79.0}
+    )
+    fig_map.update_layout(
+        mapbox_style="carto-positron", 
+        margin={"r":0,"t":0,"l":0,"b":0},
+        showlegend=False
+    )
+    st.plotly_chart(fig_map, use_container_width=True)
 
 # ==========================================
 # PAGE 2: PROVENANCE & ANOMALIES
@@ -223,3 +247,4 @@ elif page == "API Security & Compliance":
         "HTTP Status": ["200 OK 🟢", "403 Forbidden 🔴", "429 Rate Limit 🟡"]
     })
     st.dataframe(logs, use_container_width=True, hide_index=True)
+
