@@ -1,26 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Theme Management
-    const themeToggle = document.getElementById("theme-toggle");
-    const htmlEl = document.documentElement;
-    
-    try {
-        const savedTheme = localStorage.getItem("aerofare-theme");
-        if (savedTheme) {
-            htmlEl.setAttribute("data-theme", savedTheme);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-            htmlEl.setAttribute("data-theme", "light");
-        }
-    } catch (e) {
-        console.warn("localStorage not accessible");
-    }
-
-    themeToggle.addEventListener("click", () => {
-        const currentTheme = htmlEl.getAttribute("data-theme");
-        const newTheme = currentTheme === "dark" ? "light" : "dark";
-        htmlEl.setAttribute("data-theme", newTheme);
-        try { localStorage.setItem("aerofare-theme", newTheme); } catch (e) {}
-        renderCharts(true);
-    });
+    // Removed because we are strictly using the bright colorful white theme!
 
     // 2. Split-flap animation
     const animateSplitFlap = (targetValue) => {
