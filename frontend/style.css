@@ -19,13 +19,13 @@
     /* Basic website in white */
     --bg: #FFFFFF;
     --panel: #FFFFFF;
-    --panel-2: #F8F9FA;
-    --border: #E9ECEF;
+    --panel-2: #F5F3FF;  /* Very light colorful tint (violet) instead of gray */
+    --border: #DDD6FE;   /* Colorful border tint instead of gray */
     
-    /* Text */
-    --text-1: #212529;
-    --text-2: #495057;
-    --text-3: #868E96;
+    /* Text - Replacing all black/gray with deep colorful tones */
+    --text-1: #1E1B4B;   /* Very deep indigo instead of black */
+    --text-2: #312E81;   /* Medium deep indigo */
+    --text-3: #4F46E5;   /* Brighter indigo for tertiary text */
     
     /* Vibrant Accents */
     --cyan: #0D6EFD;     /* Blue */
