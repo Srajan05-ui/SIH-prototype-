@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aerofare - AirPrice India</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for the chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">Aerofare</div>
+            <ul class="nav-list">
+                <li class="nav-item active"><span class="nav-dot"></span>Command Center</li>
+                <li class="nav-item"><span class="nav-dot"></span>Provenance & Anomalies</li>
+                <li class="nav-item"><span class="nav-dot"></span>API Security</li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="page-title">Inflation Command Center</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="status-pill" id="api-status">
+                        <div class="status-dot-wrapper">
+                            <span class="status-dot"></span>
+                            <span class="status-radar"></span>
+                        </div>
+                        <span class="status-text">Simulated Data</span>
+                    </div>
+                    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                        <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Hero -->
+            <section class="hero-section">
+                <div class="hero-header">
+                    <h2 class="hero-title">Headline CPI (Fisher)</h2>
+                    <span class="data-badge">Base: 2026</span>
+                </div>
+                <div class="hero-metrics">
+                    <div class="split-flap" id="main-index-value">
+                        <!-- Digits injected via JS -->
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">.</span>
+                        <span class="flap-digit">0</span>
+                        <span class="flap-digit">0</span>
+                    </div>
+                    <div class="delta-chip delta-up" id="main-delta">+1.2% MoM</div>
+                </div>
+            </section>
+
+            <!-- Stat Strip -->
+            <section class="stat-strip">
+                <div class="stat-item">
+                    <div class="stat-label">Core CPI (Trimmed)</div>
+                    <div class="stat-value" id="stat-core">0.00</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-label">Törnqvist Variance</div>
+                    <div class="stat-value" id="stat-variance">0.00</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-label">National CPI Impact</div>
+                    <div class="stat-value" id="stat-impact">+0 bps</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-label">Anomalies Detected</div>
+                    <div class="stat-value" id="stat-anomalies">0</div>
+                </div>
+            </section>
+
+            <!-- Chart Panel -->
+            <section class="chart-panel">
+                <div class="chart-header">
+                    <h3 class="panel-title">Temporal Inflation Matrix</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="inflationChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Bottom Two Columns -->
+            <div class="bottom-grid">
+                <section class="anomaly-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Active Anomalies</h3>
+                    </div>
+                    <div class="anomaly-list" id="anomaly-list">
+                        <!-- Populated via JS -->
+                    </div>
+                </section>
+
+                <section class="route-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Route Comparison</h3>
+                    </div>
+                    <div class="route-chart-container">
+                        <canvas id="routeChart"></canvas>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
