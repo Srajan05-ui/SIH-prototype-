@@ -1,0 +1,23 @@
+name: Daily OTA Scraper Trigger
+
+on:
+  schedule:
+    # Runs at 02:00 AM UTC (07:30 AM IST) every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  trigger-ingestion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Sovereign API Ingestion Pipeline
+        run: |
+          # Replace with your actual Render/Backend URL once deployed
+          API_URL="${{ secrets.BACKEND_API_URL }}/api/v1/trigger-ingestion"
+          
+          # Sends a POST request to trigger the background scraping task
+          curl -X POST "$API_URL" \
+               -H "X-Government-API-Key: ${{ secrets.GOV_API_KEY }}" \
+               -H "Content-Type: application/json"
+          
+          echo "Ingestion trigger sent successfully."

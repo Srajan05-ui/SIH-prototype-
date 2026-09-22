@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pandas
+numpy
+scipy
+scikit-learn
+fast-flights
+curl_cffi
+streamlit
+plotly
+playwright
+
