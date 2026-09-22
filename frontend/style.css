@@ -14,36 +14,25 @@
     --radius-lg: 12px;
 }
 
-:root[data-theme="dark"] {
-    --bg: #0A1526;
-    --panel: #101E36;
-    --panel-2: #0D1830;
-    --border: #1E2E4D;
-    --text-1: #EAF2FB;
-    --text-2: #9FB0CC;
-    --text-3: #6C7EA0;
-    
-    --cyan: #38BDF8;
-    --amber: #FBBF24;
-    --emerald: #34D399;
-    --coral: #FB7185;
-    --violet: #A78BFA;
-}
-
-:root[data-theme="light"] {
-    --bg: #F2EFE7;
+/* User requested bright, white, colorful UI */
+:root, :root[data-theme="light"], :root[data-theme="dark"] {
+    /* Basic website in white */
+    --bg: #FFFFFF;
     --panel: #FFFFFF;
-    --panel-2: #F8F5EE;
-    --border: #E3DDCE;
-    --text-1: #211D17;
-    --text-2: #5A5346;
-    --text-3: #8A8272;
+    --panel-2: #F8F9FA;
+    --border: #E9ECEF;
     
-    --cyan: #0284C7;
-    --amber: #B45309;
-    --emerald: #047857;
-    --coral: #BE123C;
-    --violet: #6D28D9;
+    /* Text */
+    --text-1: #212529;
+    --text-2: #495057;
+    --text-3: #868E96;
+    
+    /* Vibrant Accents */
+    --cyan: #0D6EFD;     /* Blue */
+    --amber: #FFB703;    /* Yellow/Orange */
+    --emerald: #20C997;  /* Green */
+    --coral: #DC3545;    /* Red */
+    --violet: #6F42C1;   /* Ink Purple */
 }
 
 /* RESET */
