@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Security, Request, Body
+from fastapi import FastAPI, Depends, HTTPException, Security, Request, Body, BackgroundTasks
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, List, Optional
@@ -33,7 +33,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Restrict to Streamlit/Vercel URL in production
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -244,3 +244,30 @@ def health():
             "engines": ["Fisher", "Tornqvist", "Walsh", "Laspeyres", "Paasche",
                         "TrimmedMean", "WeightedMedian", "ScenarioSimulator",
                         "RegionalDisaggregation", "DataTrustScore"]}
+
+
+# ── ENDPOINT: Background Ingestion Trigger (For GitHub Actions) ──
+def _run_background_scraper():
+    """Runs the MMT scraper in the background to refresh the SQLite/Postgres DB."""
+    try:
+        scrape_mmt_sync(
+            routes=[("BOM", "DEL"), ("DEL", "BOM"), ("BLR", "BOM"),
+                    ("DEL", "BLR"), ("DEL", "CCU"), ("HYD", "DEL")],
+            windows=[7, 30]
+        )
+    except Exception as e:
+        print(f"Background scraper failed: {e}")
+
+@app.post("/api/v1/trigger-ingestion")
+def trigger_ingestion(
+    background_tasks: BackgroundTasks,
+    api_key: str = Depends(get_api_key),
+    request: Request = None,
+):
+    """
+    Triggers the OTA scraper in a background thread.
+    Intended to be hit via a scheduled cron job (e.g., GitHub Actions).
+    """
+    rate_limiter(request)
+    background_tasks.add_task(_run_background_scraper)
+    return {"status": "accepted", "message": "Background ingestion pipeline started"}
