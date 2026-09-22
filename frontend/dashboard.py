@@ -16,16 +16,38 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Colorful CSS overrides (No Black/Gray)
+# Colorful CSS overrides (Super Vibrant!)
 st.markdown("""
 <style>
-    .reportview-container { background: #FFFFFF; }
-    .sidebar .sidebar-content { background: #F5F3FF; }
-    h1, h2, h3, h4, h5, h6, p, span, div {
-        font-family: 'Inter', sans-serif;
-        color: #1E1B4B;
+    /* Super Colorful Gradient Background for Main App */
+    .stApp {
+        background: linear-gradient(135deg, #E0F2FE 0%, #FAE8FF 100%);
     }
-    .metric-value { font-size: 2.5rem; font-weight: 700; color: #0D6EFD; }
+    /* Vibrant Sidebar Gradient */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #6F42C1 0%, #0D6EFD 100%) !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label {
+        color: #FFFFFF !important;
+    }
+    /* Deep Colorful Text */
+    h1, h2, h3 { color: #831843 !important; font-weight: 800 !important; font-family: 'Inter', sans-serif; }
+    p, span, div { font-family: 'Inter', sans-serif; color: #1E1B4B; }
+    
+    /* Colorful Metric Boxes */
+    div[data-testid="stMetric"] {
+        background-color: rgba(255, 255, 255, 0.6);
+        border-radius: 15px;
+        padding: 15px;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+        border-bottom: 4px solid #FFB703;
+    }
+    .metric-value { font-size: 2.5rem; font-weight: 700; color: #E11D48 !important; }
     
     @keyframes flash {
         0% { background-color: #DC3545; color: #FFFFFF; }
@@ -40,6 +62,7 @@ st.markdown("""
         animation: flash 1s infinite;
         text-align: center;
         border: 2px solid #DC3545;
+        background: white;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -159,7 +182,7 @@ if page == "Inflation Command Center":
         zoom=3.5, center={"lat": 22.0, "lon": 79.0}
     )
     fig_map.update_layout(
-        mapbox_style="carto-positron", 
+        mapbox_style="open-street-map", 
         margin={"r":0,"t":0,"l":0,"b":0},
         showlegend=False
     )
